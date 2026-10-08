@@ -206,7 +206,10 @@ def main():
         source = int(args.source)
     except ValueError:
         source = args.source
-    cap = cv2.VideoCapture(source)
+    if isinstance(source, int) and os.name == "nt":
+        cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
+    else:
+        cap = cv2.VideoCapture(source)
     if not cap.isOpened():
         raise RuntimeError(f"Could not open video source: {source}")
 
