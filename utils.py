@@ -2,16 +2,21 @@ import math
 
 import numpy as np
 
-LEFT_EYE = [33, 133, 159, 145, 153, 144]
-RIGHT_EYE = [362, 382, 381, 380, 263, 373]
+LEFT_EYE = [33, 160, 158, 133, 153, 144]
+RIGHT_EYE = [362, 385, 387, 263, 373, 380]
 MOUTH = [61, 291, 0, 17, 14, 78, 308]
+
+
+def _landmark_at(landmarks, index):
+    points = landmarks.landmark if hasattr(landmarks, "landmark") else landmarks
+    return points[index]
 
 
 def landmarks_to_xy(landmarks, indices, frame_w, frame_h):
     """Return a 2D array of normalized landmark coordinates in pixel space."""
     points = []
     for index in indices:
-        mark = landmarks.landmark[index]
+        mark = _landmark_at(landmarks, index)
         points.append((mark.x * frame_w, mark.y * frame_h))
     return np.asarray(points, dtype=np.float32)
 
@@ -47,15 +52,17 @@ def mouth_aspect_ratio(mouth_points):
 
 def get_head_pose(landmarks, frame_w, frame_h):
     """Estimate a simple yaw/pitch from the current face geometry."""
-    nose = landmarks.landmark[1]
-    left_eye = landmarks.landmark[33]
-    right_eye = landmarks.landmark[263]
+    nose = _landmark_at(landmarks, 1)
+    left_eye = _landmark_at(landmarks, 33)
+    right_eye = _landmark_at(landmarks, 263)
     eye_mid_x = (left_eye.x + right_eye.x) / 2.0
     eye_mid_y = (left_eye.y + right_eye.y) / 2.0
 
-    eye_span = right_eye.x - left_eye.x
-    yaw = math.degrees(math.atan2(eye_span, 0.25))
-    pitch = math.degrees(
-        math.atan2(nose.y - eye_mid_y, max(0.05, abs(nose.x - eye_mid_x)))
-    )
+    eye_span = abs(right_eye.x - left_eye.x)
+    if eye_span < 1e-6:
+        return None
+
+    yaw = math.degrees(math.atan2(nose.x - eye_mid_x, eye_span))
+    neutral_pitch = 38.0
+    pitch = math.degrees(math.atan2(nose.y - eye_mid_y, eye_span)) - neutral_pitch
     return (yaw, pitch)
